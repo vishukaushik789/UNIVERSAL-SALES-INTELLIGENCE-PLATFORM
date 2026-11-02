@@ -233,7 +233,8 @@ if uploaded_file is not None:
                     genai.configure(api_key=api_key)
                     
                     try:
-                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        # Safest default model alias
+                        model = genai.GenerativeModel('gemini-pro')
                         user_question = st.chat_input("Ask GenAI (e.g., Draft a summary email for the team...)")
                         
                         if user_question:
@@ -242,12 +243,23 @@ if uploaded_file is not None:
                                 
                             with st.spinner("AI is analyzing the dataset..."):
                                 prompt = f"{business_context}\n\nUser Question: {user_question}"
-                                response = model.generate_content(prompt)
                                 
+                                # Add a fallback mechanism for the generate_content call
+                                try:
+                                    response = model.generate_content(prompt)
+                                except Exception as inner_e:
+                                    if "404" in str(inner_e):
+                                        # Fallback to gemini-1.5-flash if pro fails due to version mismatch
+                                        fallback_model = genai.GenerativeModel('gemini-1.5-flash')
+                                        response = fallback_model.generate_content(prompt)
+                                    else:
+                                        raise inner_e
+                                        
                             with st.chat_message("assistant"):
                                 st.write(response.text)
                     except Exception as e:
                         st.error(f"GenAI Error: {e}")
+                        st.info("💡 Try updating your Streamlit Cloud dependencies or check your API key permissions.")
 
     except Exception as read_error:
         st.error(f"Could not read the file. Please ensure it's a valid CSV. Error: {read_error}")
