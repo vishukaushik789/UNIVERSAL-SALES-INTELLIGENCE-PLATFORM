@@ -1,11 +1,4 @@
 # New UI Update
-import sys
-import asyncio
-
-# Fix for Windows asyncio bug
-if sys.platform == 'win32':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -185,33 +178,22 @@ if uploaded_file is not None:
                     genai.configure(api_key=api_key)
                     
                     try:
-                        # --- SMART DETECTION: Auto-find the correct model for this API key ---
-                        valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        # Using stable gemini-1.5-flash model
+                        model = genai.GenerativeModel('gemini-1.5-flash')
                         
-                        if not valid_models:
-                            st.error("Your API key does not have access to any text generation models.")
-                        else:
-                            # Prefer a 1.5 model if available, otherwise just use the first valid one
-                            selected_model_name = next((m for m in valid_models if '1.5' in m), valid_models[0])
-                            # Remove 'models/' prefix if it exists to prevent double prefixing
-                            clean_model_name = selected_model_name.replace("models/", "")
-                            
-                            model = genai.GenerativeModel(clean_model_name)
-                            
-                            user_question = st.chat_input("Ask GenAI (e.g., Draft a summary email for the team...)")
-                            if user_question:
-                                with st.chat_message("user"):
-                                    st.write(user_question)
-                                    
-                                with st.spinner(f"AI is analyzing using {clean_model_name}..."):
-                                    prompt = f"{business_context}\n\nUser Question: {user_question}"
-                                    response = model.generate_content(prompt)
-                                    
-                                with st.chat_message("assistant"):
-                                    st.write(response.text)
+                        user_question = st.chat_input("Ask GenAI (e.g., Draft a summary email for the team...)")
+                        if user_question:
+                            with st.chat_message("user"):
+                                st.write(user_question)
+                                
+                            with st.spinner("AI is analyzing the dataset..."):
+                                prompt = f"{business_context}\n\nUser Question: {user_question}"
+                                response = model.generate_content(prompt)
+                                
+                            with st.chat_message("assistant"):
+                                st.write(response.text)
                     except Exception as e:
                         st.error(f"GenAI Error: {e}")
-                        st.info(f"We attempted to auto-detect models, but it failed. Error details above.")
 
     except Exception as read_error:
         st.error(f"Could not read the file. Please ensure it's a valid CSV. Error: {read_error}")
